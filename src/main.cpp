@@ -36,15 +36,17 @@ const int RelConf = PB4;   // Relais of configuratie
         3 = knippert bij servo rechts
    
    6    RelKnip
-        0-255 voor snelheid knipperen relais in stapjes van 500 ms
+        0-255 voor snelheid knipperen relais in stapjes van 100 ms
         
 */
 int DKMode = 1;       //DK Mode 
 int EindLinks = 10;  // eind stand servo links
 int EindRechts = 140;  // eind stand servo rechts
-int Snelheid = 100;  // snelheid servo
+int Snelheid = 10;  // snelheid servo
 int RelMod = 1;  // Relais mode 
 int RelKnip = 2; // Relais knipper mode
+int Hoek = EindRechts - EindLinks; //Hoek verstelling
+int RelaisOm = Hoek/2;
 
 // Variable
 int Mode = 0;
@@ -55,19 +57,46 @@ void Mode1()  // Drukknoppen met relais om tijdens servo
 {
 while(1){
 
-  digitalWrite(StatusLed,HIGH);  
-
-  if(digitalRead(DKLinks)== 0)
+   if(digitalRead(DKLinks)== 0)  //Drukknop Links
   { 
-    
-    
-    Servo.write(EindLinks);
-    
+    int Stel = EindRechts; // Begin stand
+
+      // Zet servo naar links en halverwegen het relais 
+     
+     for (int i = 0  ; i < Hoek; i++ )
+     {
+         digitalWrite(StatusLed,LOW);      
+         Servo.write(Stel);
+         delay(Snelheid);
+         Stel=Stel-1;
+         if (i == RelaisOm)
+          {
+           digitalWrite(RelConf, LOW);
+          } 
+         digitalWrite(StatusLed,HIGH);
+         delay(Snelheid);   
+     }       
   }
 
   if(digitalRead(DKRechts)== 0)
   { 
-    Servo.write(EindRechts);
+    int Stel = EindLinks; // Begin stand
+
+      // Zet Servo naar Links en halverwegen het relais
+
+     for (int i = 0 ; i < Hoek ; i++ )
+     {
+        digitalWrite(StatusLed,LOW);
+        Servo.write(Stel);
+        delay(Snelheid);
+        Stel=Stel+1;
+        if (i == RelaisOm)
+         { 
+           digitalWrite(RelConf, HIGH);
+         }
+        digitalWrite(StatusLed,HIGH);
+        delay(Snelheid); 
+     }
   }
 
 }
@@ -94,6 +123,7 @@ TIMSK |= _BV(OCIE0A);  // Zet comperator interupt aan
   pinMode(DKRechts,INPUT_PULLUP);  // drukknop intern pull up
   pinMode(DKLinks, INPUT_PULLUP);  // drukknop intern pull up
   pinMode(StatusLed, OUTPUT);
+  pinMode(RelConf, OUTPUT);
 
  // Servo op pin ServoPin
 
