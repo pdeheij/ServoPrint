@@ -37,6 +37,10 @@ const int RelConf = PB4;   // Relais of configuratie
    
    6    RelKnip
         0-255 voor snelheid knipperen relais in stapjes van 100 ms
+
+   7    Voorekeur
+        1 = Links voorkeur opstarten
+        2 = Rechts voorkeur opstarten     
         
 */
 int DKMode = 1;       //DK Mode 
@@ -45,21 +49,16 @@ int EindRechts = 140;  // eind stand servo rechts
 int Snelheid = 10;  // snelheid servo
 int RelMod = 1;  // Relais mode 
 int RelKnip = 2; // Relais knipper mode
-int Hoek = EindRechts - EindLinks; //Hoek verstelling
-int RelaisOm = Hoek/2;
+int VoorKeur = 1; // Voorkeur opstart stand
 
 // Variable
-int Mode = 0;
-
+int Hoek = EindRechts - EindLinks; //Hoek verstelling
+int RelaisOm = Hoek/2;
 Adafruit_SoftServo Servo;
 
-void Mode1()  // Drukknoppen met relais om tijdens servo
+void ServoLinks() // Servo naar links met ingestelde waarde
 {
-while(1){
-
-   if(digitalRead(DKLinks)== 0)  //Drukknop Links
-  { 
-    int Stel = EindRechts; // Begin stand
+   int Stel = EindRechts; // Begin stand
 
       // Zet servo naar links en halverwegen het relais 
      
@@ -76,13 +75,13 @@ while(1){
          digitalWrite(StatusLed,HIGH);
          delay(Snelheid);   
      }       
-  }
+}
 
-  if(digitalRead(DKRechts)== 0)
-  { 
-    int Stel = EindLinks; // Begin stand
+void ServoRechts() // Servo naar Rechts met ingestelde waarde
+{
+       int Stel = EindLinks; // Begin stand
 
-      // Zet Servo naar Links en halverwegen het relais
+      // Zet Servo naar Rechts en halverwegen het relais
 
      for (int i = 0 ; i < Hoek ; i++ )
      {
@@ -97,49 +96,70 @@ while(1){
         digitalWrite(StatusLed,HIGH);
         delay(Snelheid); 
      }
-  }
+}
+
+void Mode1()  // Drukknoppen met relais om tijdens servo
+{
+  while(1)
+    {
+
+      if(digitalRead(DKLinks)== 0)  //Drukknop Links
+        { 
+          ServoLinks();
+        }
+
+      if(digitalRead(DKRechts)== 0) //Drukknop Rechts
+        { 
+          ServoRechts();
+       }
+
+   }
 
 }
 
-}
-
-void Mode2()
+void Mode2()  // Drukknoppen met relais in knipperstand
 {
 
 
 }
 
+void setup() 
+{
+  OCR0A = 0xAF;         // elk nummer is goed
+  TIMSK |= _BV(OCIE0A);  // Zet comperator interupt aan
 
 
-
-
-void setup() {
-OCR0A = 0xAF;         // elk nummer is goed
-TIMSK |= _BV(OCIE0A);  // Zet comperator interupt aan
-
-
- // zet pinnen in juiste stand
+  // zet pinnen in juiste stand
 
   pinMode(DKRechts,INPUT_PULLUP);  // drukknop intern pull up
   pinMode(DKLinks, INPUT_PULLUP);  // drukknop intern pull up
   pinMode(StatusLed, OUTPUT);
   pinMode(RelConf, OUTPUT);
 
- // Servo op pin ServoPin
+  // Servo op pin ServoPin
 
   Servo.attach(ServoPin);
-
-
-
-}
-
-void loop() {
   
-// Bepaal werking
+  if (VoorKeur == 1)
+    {
+       ServoLinks();
+    }
+    else 
+    {
+      ServoRechts(); 
+    }  
 
-if (DKMode == 1 && RelMod == 1 ){
-  Mode1();
 }
+
+void loop() 
+{
+  
+  // Bepaal werking
+
+  if (DKMode == 1 && RelMod == 1 )
+  {
+    Mode1();
+  }
   
 
 
