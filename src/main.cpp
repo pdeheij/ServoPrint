@@ -38,7 +38,7 @@ const int RelConf = PB0;   // Relais of configuratie
    6    RelKnip
         0-255 voor snelheid knipperen relais in stapjes van 5 ms *
 
-   7    Voorekeur
+   7    Voorkeur
         1 = Links voorkeur opstarten
         2 = Rechts voorkeur opstarten     
         
@@ -49,11 +49,11 @@ int EindRechts = 10;  // eind stand servo rechts
 int Snelheid = 1*5;  // snelheid servo
 int RelMod = 3;  // Relais mode 
 int RelKnip = 100*5; // Relais knipper snelhied
-int VoorKeur = 1; // Voorkeur opstart stand
+int VoorKeur = 2; // Voorkeur opstart stand
 
 
 // Variable
-int Mode = 1; // Welke mode zitten we
+int Mode = 0; // Welke mode zitten we
 int MomLinks = 0; // Marker links ingedrukt
 int MomRechts = 0; // Marker rechts ingedrukt
 int ContLinks = 0;
@@ -70,8 +70,14 @@ unsigned long currentMillis = millis();
 
 
 Adafruit_SoftServo Servo;
+void Configureer()
+{ while (Mode == 1)
+  {
+    digitalWrite(StatusLed, LOW);
+  }
 
 
+}
 
 
 
@@ -88,15 +94,36 @@ void setup()
   pinMode(DKRechts,INPUT_PULLUP);  // drukknop intern pull up
   pinMode(DKLinks, INPUT_PULLUP);  // drukknop intern pull up
   pinMode(StatusLed, OUTPUT);
-  pinMode(RelConf, OUTPUT);
+  pinMode(RelConf, INPUT);
 
   // Servo op pin ServoPin
 
   Servo.attach(ServoPin);
-  Servo.write(EindLinks);
-  PosServo = 1;
-  digitalWrite(RelConf, HIGH);
+
+  // Controleer of we gaan programmeren
+
+   if (digitalRead(RelConf)==1)
+   {
+     Mode=1;
+     Configureer();
+   } 
+
+   pinMode(RelConf, OUTPUT);
+   
+
+  // Servo in voorkeur stand
   
+  if (VoorKeur == 1)
+  {
+    Servo.write(EindLinks);
+    PosServo = 1;
+    if(RelMod == 1) digitalWrite(RelConf, HIGH);
+  }else{
+    Servo.write(EindRechts);
+    PosServo = 0;
+    if(RelMod == 1)digitalWrite(RelConf, LOW);  
+  }
+  digitalWrite(StatusLed, HIGH);
 
 }
 
@@ -109,6 +136,7 @@ void loop()
     {
        MomLinks = 1;
        Stel = EindRechts; // Begin stand
+       digitalWrite(StatusLed, LOW);
       
     }
   
@@ -116,7 +144,7 @@ void loop()
     { 
        MomRechts = 1;
        Stel = EindLinks;
-      
+       digitalWrite(StatusLed, LOW);
     }
 
   // Servo stel routine  
@@ -139,6 +167,7 @@ void loop()
            {
              MomLinks = 0;
              PosServo = 1;
+             digitalWrite(StatusLed, HIGH);
   
            }
 
@@ -158,6 +187,7 @@ void loop()
            {
              MomRechts = 0;
              PosServo = 0;
+             digitalWrite(StatusLed, HIGH);
            }
 
         }
@@ -190,7 +220,7 @@ void loop()
       }  
     }
 
-     digitalWrite(RelConf, RelStatus);
+     if(RelMod == 2 || RelMod == 3)digitalWrite(RelConf, RelStatus);
    }
  
 }
