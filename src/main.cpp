@@ -70,6 +70,8 @@ unsigned long currentMillis = millis();
 
 
 Adafruit_SoftServo Servo;
+
+// Configureer mode als jumper op dk staat
 void Configureer()
 { while (Mode == 1)
   {
@@ -109,7 +111,7 @@ void setup()
    } 
 
    pinMode(RelConf, OUTPUT);
-   
+
 
   // Servo in voorkeur stand
   
