@@ -16,6 +16,7 @@ const int RelConf = PB0;   // Relais of configuratie
 
 /* 
    EEPROM GEBRUIK
+   0    Configuratie aanwezig dan is deze 1
 
    1    DKMode   
         1 = Drukknoppen links en rechts *
@@ -44,13 +45,13 @@ const int RelConf = PB0;   // Relais of configuratie
         
 */
 int DKMode = 1;       //DK Mode 
-int EindLinks = 140;  // eind stand servo links
-int EindRechts = 10;  // eind stand servo rechts
-int Snelheid = 1*5;  // snelheid servo
+int EindLinks = 180;  // eind stand servo links
+int EindRechts = 0;  // eind stand servo rechts
+int Snelheid = 5*5;  // snelheid servo
 int RelMod = 3;  // Relais mode 
 int RelKnip = 100*5; // Relais knipper snelhied
 int VoorKeur = 2; // Voorkeur opstart stand
-
+int Configuratie = 1;
 
 // Variable
 int Mode = 0; // Welke mode zitten we
@@ -74,9 +75,37 @@ Adafruit_SoftServo Servo;
 // Configureer mode als jumper op dk staat
 
 void Configureer()
-{ while (Mode == 1)
+{ 
+  Servo.write(90); // zet servo in middenstand
+  int ProgrammerStap = 1;  //Terugmelding via statusled
+  int RegisterWaarde = 1;
+  int FlashShort = 100;  // snelknipperen
+  int Pauze = 500; // pauzen tussen snelknipperen
+  int TimerPrevious = 0; // Voor de timer
+  int porg =1;
+  int reg = 0;
+  int StatusvanLed = 0;
+  while (Mode == 1)
   {
+    currentMillis = millis();  // Actueel teller millis
+
     digitalWrite(StatusLed, LOW);
+
+
+
+
+    
+   // statusLed knipper routine
+   if (currentMillis - TimerPrevious >= FlashShort)
+   { 
+      TimerPrevious  = currentMillis;
+
+      
+
+   }
+
+
+
   }
 
 
@@ -105,7 +134,7 @@ void setup()
 
   // Controleer of we gaan programmeren
 
-   if (digitalRead(RelConf)==1)
+   if (digitalRead(RelConf) == 1 | Configuratie != 1)
    {
      Mode=1;
      Configureer();
@@ -203,7 +232,7 @@ void loop()
    {
      RelaisMillis = currentMillis;
 
-    if( PosServo == 1 && RelMod == 2)
+    if( (PosServo == 1 && RelMod == 2) | MomRechts == 1)
     { 
       if (RelStatus == LOW)
       { 
@@ -213,7 +242,7 @@ void loop()
       }  
     }
 
-    if( PosServo == 0 && RelMod == 3)
+    if( (PosServo == 0 && RelMod == 3) | MomLinks ==1)
     { 
       if (RelStatus == LOW)
       { 
