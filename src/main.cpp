@@ -5,14 +5,17 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <Adafruit_SoftServo.h>
+#include <Adafruit_NeoPixel.h>
+
 
 // Pin defenities
 
 const int ServoPin = PB4;   // Servo Pin
 const int DKRechts = PB1;  // Drukknop Rechts
 const int DKLinks = PB2;   // Drukknop Links
-const int StatusLed = PB3;  // Status Led
+const int Status = PB3;  // Status Led
 const int RelConf = PB0;   // Relais of configuratie
+const int LedCount = 1;
 
 /* 
    EEPROM GEBRUIK
@@ -44,11 +47,14 @@ const int RelConf = PB0;   // Relais of configuratie
         2 = Rechts voorkeur opstarten     
         
 */
+
+
+
 int DKMode = 1;       //DK Mode 
 int EindLinks = 180;  // eind stand servo links
 int EindRechts = 0;  // eind stand servo rechts
 int Snelheid = 5*5;  // snelheid servo
-int RelMod = 3;  // Relais mode 
+int RelMod = 1;  // Relais mode 
 int RelKnip = 100*5; // Relais knipper snelhied
 int VoorKeur = 2; // Voorkeur opstart stand
 int Configuratie = 1;
@@ -71,6 +77,7 @@ unsigned long currentMillis = millis();
 
 
 Adafruit_SoftServo Servo;
+Adafruit_NeoPixel StatusLed(LedCount, Status, NEO_GRB + NEO_KHZ800);
 
 // Configureer mode als jumper op dk staat
 
@@ -89,7 +96,7 @@ void Configureer()
   {
     currentMillis = millis();  // Actueel teller millis
 
-    digitalWrite(StatusLed, LOW);
+    
 
 
 
@@ -125,8 +132,10 @@ void setup()
 
   pinMode(DKRechts,INPUT_PULLUP);  // drukknop intern pull up
   pinMode(DKLinks, INPUT_PULLUP);  // drukknop intern pull up
-  pinMode(StatusLed, OUTPUT);
   pinMode(RelConf, INPUT);
+
+  StatusLed.begin();
+  StatusLed.show();
 
   // Servo op pin ServoPin
 
@@ -153,9 +162,9 @@ void setup()
   }else{
     Servo.write(EindRechts);
     PosServo = 0;
-    if(RelMod == 1)digitalWrite(RelConf, LOW);  
+    if(RelMod == 1)digitalWrite(RelConf, LOW); 
   }
-  digitalWrite(StatusLed, HIGH);
+  
 
 }
 
@@ -168,7 +177,7 @@ void loop()
     {
        MomLinks = 1;
        Stel = EindRechts; // Begin stand
-       digitalWrite(StatusLed, LOW);
+      
       
     }
   
@@ -176,7 +185,7 @@ void loop()
     { 
        MomRechts = 1;
        Stel = EindLinks;
-       digitalWrite(StatusLed, LOW);
+       
     }
 
   // Servo stel routine  
@@ -192,15 +201,17 @@ void loop()
           Stel = Stel + 1;
           
           // Zet Relais
-          if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)) digitalWrite(RelConf, HIGH);
-          
+          if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)) {
+            
+            digitalWrite(RelConf, HIGH);
+            StatusLed.setPixelColor(0,255,0,0);
+            StatusLed.show();
+          }
           // is de eindstand bereikt?
           if (Stel == EindLinks)
            {
              MomLinks = 0;
-             PosServo = 1;
-             digitalWrite(StatusLed, HIGH);
-  
+             PosServo = 1;        
            }
 
         }
@@ -212,14 +223,18 @@ void loop()
           Stel = Stel - 1;
 
           // Zet Relais
-          if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)) digitalWrite(RelConf, LOW);
-        
+          if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2))
+          {
+            digitalWrite(RelConf, LOW);
+            StatusLed.setPixelColor(0,0,255,0);
+            StatusLed.show();
+          } 
           // Is de eindstand bereikt ?          
           if (Stel == EindRechts)
            {
              MomRechts = 0;
              PosServo = 0;
-             digitalWrite(StatusLed, HIGH);
+             
            }
 
         }
@@ -255,6 +270,8 @@ void loop()
      if(RelMod == 2 || RelMod == 3)digitalWrite(RelConf, RelStatus);
    }
  
+  
+
 }
 
 
@@ -269,6 +286,5 @@ SIGNAL(TIMER0_COMPA_vect)
     counter = 0;
     Servo.refresh();
   }
-
 
 }
