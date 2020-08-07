@@ -56,7 +56,7 @@ int EindRechts = 0;  // eind stand servo rechts
 int Snelheid = 5*5;  // snelheid servo
 int RelMod = 1;  // Relais mode 
 int RelKnip = 100*5; // Relais knipper snelhied
-int VoorKeur = 2; // Voorkeur opstart stand
+int VoorKeur = 1; // Voorkeur opstart stand
 int Configuratie = 1;
 
 // Variable
@@ -158,10 +158,14 @@ void setup()
   {
     Servo.write(EindLinks);
     PosServo = 1;
+    StatusLed.setPixelColor(0,255,0,0);
+    StatusLed.show();
     if(RelMod == 1) digitalWrite(RelConf, HIGH);
   }else{
     Servo.write(EindRechts);
     PosServo = 0;
+    StatusLed.setPixelColor(0,0,255,0);
+    StatusLed.show();
     if(RelMod == 1)digitalWrite(RelConf, LOW); 
   }
   
