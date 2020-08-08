@@ -1,4 +1,4 @@
-// ServoPrint V1.0
+// ServoPrint V0.103a
 // Bij P.M. de Heij   11-7-2020
 // status: ontwikkeling
 
