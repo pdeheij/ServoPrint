@@ -33,58 +33,92 @@ const int Links = 1; // Links = 1
    2    EindRechts
         0-180 voor eindstand servo Rechts
 
-   3    Snelheid
+   3,4,5,6   Snelheid
         1-255 voor snelheid in stappen van 5 ms
 
-   4    Voorkeur
+   7   Voorkeur
         1 = Links voorkeur opstarten
         2 = Rechts voorkeur opstarten
 
-   5    DKMode
+   8    DKMode
         1 = Drukknoppen links en rechts *
         2 = Schakelaar op drukknop Rechts
 
-   6    LedMod
+   9   LedMod
         1 = Uit
         2 = Flash
         3 = knippert tijdens servo
         2 = knippert bij servo links
         3 = knippert bij servo rechts
 
-   7    LedKnip
-        0-255 voor snelheid knipperen relais in stapjes van 5 ms *
+   10,11,12,13    LedKnip
+        0-255 voor knipper snelheid led
 
 
 
 */
 
+// Schrijven Long naar EEPROM
+void EEPROMWriteLong(int adres,long waarde)
+{
+    byte four = (waarde & 0xFF);
+    byte three = ((waarde >> 8) & 0xFF);
+    byte two = ((waarde >> 16) & 0xFF);
+    byte one = ((waarde >> 24) & 0xFF);
+
+    EEPROM.write(adres,four);
+    EEPROM.write(adres + 1,three);
+    EEPROM.write(adres + 2,two);
+    EEPROM.write(adres + 3,one);
+
+}
+
+// Lezen long van EEPROM
+long EEPROMReadlong(long adres)
+{
+    long four = EEPROM.read(adres);
+    long three = EEPROM.read(adres + 1);
+    long two = EEPROM.read(adres + 2);
+    long one = EEPROM.read(adres + 3);
+
+    return((four << 0) & 0xFF) + ((three  << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
+}
 
 
+int Mode = 0; //Normaal 0 in progmode 1
 int DKMode = 2;//DK Mode 
-int EindLinks = 180;  // eind stand servo links
-int EindRechts = 5;  // eind stand servo rechts
-const long Snelheid = 5*5;  // snelheid servo
+// int EindLinks = EEPROM.read(1);  // eind stand servo links
+// int EindRechts = EEPROM.read(2);  // eind stand servo rechts
+int EindLinks = 180;
+int EindRechts = 6;
+int SnelInst = 5;
 int RelMod = 1;  // Relais mode 
 const long RelKnip = 100*5; // Relais knipper snelhied
 int VoorKeur = 1; // Voorkeur opstart stand
 int Configuratie = 1;
 
 // Variable
-int Mode = 0; // Welke mode zitten we
+
 int NaarLinks = 0; // Marker links ingedrukt
 int NaarRechts = 0; // Marker rechts ingedrukt
 int ContLinks = 0;
 int ContRechts = 0;
 int Stel; // Servo positie om te settten
-int ledState = LOW;
+int ledState;
+int endstate;
 int PosServo; // Actuele servo positie 0 = Rechts 1 = Links
 int RelStatus = 0;
 int Vergrendel = 0;
+int Goto;
+int State;
 
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
 unsigned long RelaisMillis = 0; // voor snelheid LED
+long Snelheid = SnelInst*5;  // snelheid servo
 unsigned long currentMillis = millis();
+unsigned long FlashMillis = 0;
+unsigned long Flash =500;
 
 // class defenities
 
@@ -92,8 +126,6 @@ Adafruit_SoftServo Servo;
 Adafruit_NeoPixel StatusLed(LedCount, Status, NEO_GRB + NEO_KHZ800);
 Bounce DKRechts = Bounce();
 Bounce DKLinks = Bounce();
-
-
 
 
 
@@ -109,92 +141,193 @@ void Configureer()
     const long FlashShort = 100;  // snelknipperen
     // const long Pauze = 500; // pauzen tussen snelknipperen
     int TimerPrevious = 0; // Voor de timer
-    int CalLinks=110;
-    int CalRechts=70;
-
-
-    
-    
-      
-      
+    int CalLinks=EindLinks;
+    int CalRechts=EindRechts;
 
 
 
 
-    while (digitalRead(RelConf == 1)) {    
-}
+
+
+
+
+
+
+    while (digitalRead(RelConf == 1))
+    {
+    }
     delay(1000);
+
     while (Mode == 1)
     {
         currentMillis = millis();  // Actueel teller millis
+
         DKRechts.update();
         DKLinks.update();
 
         switch (ProgrammerStap)
         {
-        case  1:
+        case  1:  // afstellen postitie Links
 
             StatusLed.setPixelColor(0, 255, 0, 0);
             StatusLed.show();
             Servo.write(CalLinks);
-            if (DKLinks.read() == 1) CalLinks=CalLinks+1;
+            if (DKLinks.read() == 0) CalLinks=CalLinks+1;
             delay(100);
-            if (DKRechts.read() == 1) CalLinks=CalLinks-1;
+            if (DKRechts.read() == 0) CalLinks=CalLinks-1;
             delay(100);
-            if (digitalRead(RelConf) == 0){
-              EEPROM.write(1,CalLinks);
-              ProgrammerStap = 2;
-              EindLinks = CalLinks;
-              delay(1000);
+            if (digitalRead(RelConf) == 0) {
+                EEPROM.write(1, CalLinks);
+                ProgrammerStap = 2;
+                EindLinks = CalLinks;
+                EEPROM.write(EindLinks, 1);
+                delay(1000);
             }
-        
+
             break;
-        case 2:
+        case 2:  // afstellen postitie Rechts
+
             StatusLed.setPixelColor(0, 0, 255, 0);
             StatusLed.show();
             Servo.write(CalRechts);
-            if (DKLinks.read() == 1) CalRechts=CalRechts-1;
+            if (DKLinks.read() == 0) CalRechts=CalRechts+1;
             delay(100);
-            if (DKRechts.read() == 1) CalRechts=CalRechts+1;
+            if (DKRechts.read() == 0) CalRechts=CalRechts-1;
             delay(100);
-            if (digitalRead(RelConf) == 0){
-              EEPROM.write(2,CalRechts);
-              ProgrammerStap = 3;
-              EindRechts = CalRechts;
-              delay(1000);
+            if (digitalRead(RelConf) == 0) {
+                EEPROM.write(2, CalRechts);
+                ProgrammerStap = 3;
+                EindRechts = CalRechts;
+                EEPROM.write(EindRechts, 2);
+                Stel = EindRechts;
+                PosServo = Rechts;
+                delay(1000);
 
             }
 
             break;
-        case 3:
-            Mode = 0;
+        case 3: // afstellen snelheid
+
+            if (currentMillis - ServoMillis >= Snelheid)
+            {
+                ServoMillis = currentMillis;
+                // Naar Links
+                if (Stel != EindLinks && PosServo == Rechts)
+                {
+                    Servo.write(Stel);
+                    Stel = Stel + 1;
+                    ledState = !ledState;
+
+                    if (Stel == EindLinks)
+                    {
+                        PosServo = Links;
+                        Stel = EindLinks;
+                    }
+                }
+                // Naar Rechts
+                if (Stel != EindRechts && PosServo == Links)
+                {
+                    Servo.write(Stel);
+                    Stel = Stel - 1;
+                    ledState = !ledState;
+
+                    if (Stel == EindRechts)
+                    {
+                        PosServo = Rechts;
+                        Stel = EindRechts;
+                    }
+
+                }
+
+                if (ledState == 1 && endstate == 0)
+                {
+                    StatusLed.setPixelColor(0, 0, 0, 0);
+                    StatusLed.show();
+                }
+                else
+                {
+                    StatusLed.setPixelColor(0, 0, 255, 0);
+                    StatusLed.show();
+                }
+
+                if (DKLinks.read() == 0) {
+                    Snelheid = Snelheid +1;
+                    if (Snelheid >= 255)Snelheid = 255;
+                }
+                delay(5);
+                if (DKRechts.read() == 0) {
+                    Snelheid = Snelheid -1;
+                    if (Snelheid <= 0)Snelheid = 0;
+                }
+                delay(5);
+                if (digitalRead(RelConf) == 0) {
+
+                    ProgrammerStap = 4;
+                    delay(1000);
+                    EEPROMWriteLong(3,Snelheid);
+
+                }
+                if (Snelheid > 253 | Snelheid < 2)
+                {
+                    StatusLed.setPixelColor(0, 255, 0, 0, 0);
+                    StatusLed.show();
+                    endstate = 1;
+
+                }
+                else
+                {
+                    endstate = 0;
+                }
+
+            }
+
             break;
 
+        case 4: // Drukknop mode
+           
+            if (DKMode == 1 )
+            {
+                StatusLed.setPixelColor(0,255,0,0);
+                StatusLed.show();
+            }
+            else if (DKMode == 2)
+            {
+                StatusLed.setPixelColor(0,0,255,0);
+                StatusLed.show();
+            }
+            if (DKLinks.read() == 0) DKMode=2;
+            delay(5);
+            if (DKRechts.read() == 0)DKMode=1;
+            delay(5);
+
+            if (digitalRead(RelConf) == 0) 
+            {
+
+                    ProgrammerStap = 5;
+                    delay(1000);
+                    
+
+            }    
+            break;
+
+        case 5:
+            Mode = 0;
+            break;    
+
         }
 
 
 
 
 
-        // statusLed knipper routine
-        if (currentMillis - TimerPrevious >= FlashShort)
-        {
-            TimerPrevious  = currentMillis;
 
-
-
-        }
 
 
 
     }
 
- return;
+    return;
 }
-
-
-
-
 
 void setup()
 {
@@ -209,7 +342,7 @@ void setup()
     pinMode(RelConf, INPUT); // ingang zonder pullup voor mode 
 
     // start en reset NeoPixel 
-    StatusLed.begin();   
+    StatusLed.begin();
     StatusLed.show();
 
     // Debounce de drukknoppen links en rechts
@@ -224,15 +357,39 @@ void setup()
     // Controleer of we gaan programmeren
     if ((digitalRead(RelConf) == 1) | (Configuratie != 1))
     {
-        Mode=1;
+        Mode = 1;
         Configureer();
+    }
+
+    // Terug uit programmeren vergeet niet de jumper terug te zetten
+    while (digitalRead(RelConf) == 1 && Mode ==0)
+    {
+        currentMillis = millis();
+        if (currentMillis - FlashMillis >= Flash)
+        {
+            FlashMillis = currentMillis;
+
+            if (State == LOW)
+            {
+                StatusLed.setPixelColor(0, 0, 0, 255);
+                State = HIGH;
+            }
+            else
+            {
+                StatusLed.setPixelColor(0, 0, 0, 0);
+                State = LOW;
+            }
+
+            StatusLed.show();
+
+        }
+
     }
 
     // zet PB4 terug op uitgang voor relais
     pinMode(RelConf, OUTPUT);
-   
 
-    // Servo in voorkeur stand
+    // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
     if (VoorKeur == 1 | digitalRead(BUTTON_RECHTS == 0))
     {
         Servo.write(EindLinks);
@@ -241,7 +398,7 @@ void setup()
         StatusLed.show();
         if (RelMod == 1) digitalWrite(RelConf, HIGH);
     }
-    else 
+    else
     {
         Servo.write(EindRechts);
         PosServo = Rechts;
@@ -299,7 +456,7 @@ void loop()
             Stel = Stel + 1;
 
             // Zet Relais
-            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2))
+            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)+EindRechts)
             {
 
                 digitalWrite(RelConf, HIGH);
@@ -323,7 +480,7 @@ void loop()
             Stel = Stel - 1;
 
             // Zet Relais
-            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2))
+            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)+EindRechts)
             {
                 digitalWrite(RelConf, LOW);
                 StatusLed.setPixelColor(0, 0, 255, 0);
@@ -342,7 +499,7 @@ void loop()
 
     }
 
-    
+
 }
 
 
