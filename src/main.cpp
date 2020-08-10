@@ -46,10 +46,13 @@ const int Links = 1; // Links = 1
 
    9   LedMod
         1 = Uit
-        2 = Flash
-        3 = knippert tijdens servo
-        2 = knippert bij servo links
-        3 = knippert bij servo rechts
+        2 = knippert altijd
+        3 = Flash
+        4 = Flash bij servo naar rechts
+        5 = Flash bij servo naar links
+        6 = Knippert tijdens Servo beweging
+        7 = Knippert bij servo naar Rechts 
+        8 = knippert bij servo naar rechts
 
    10,11,12,13    LedKnip
         0-255 voor knipper snelheid led
@@ -85,20 +88,19 @@ long EEPROMReadlong(long adres)
 }
 
 
-int Mode = 0; //Normaal 0 in progmode 1
-int DKMode = 2;//DK Mode 
-// int EindLinks = EEPROM.read(1);  // eind stand servo links
-// int EindRechts = EEPROM.read(2);  // eind stand servo rechts
-int EindLinks = 180;
-int EindRechts = 6;
-int SnelInst = 5;
+
+int Configuratie = EEPROM.read(0);
+int EindLinks = EEPROM.read(1);  // eind stand servo links
+int EindRechts = EEPROM.read(2);  // eind stand servo rechts
+int DKMode = EEPROM.read(8);//DK Mode 
+
 int RelMod = 1;  // Relais mode 
 const long RelKnip = 100*5; // Relais knipper snelhied
 int VoorKeur = 1; // Voorkeur opstart stand
-int Configuratie = 1;
+
 
 // Variable
-
+int Mode = 0; //Normaal 0 in progmode 1
 int NaarLinks = 0; // Marker links ingedrukt
 int NaarRechts = 0; // Marker rechts ingedrukt
 int ContLinks = 0;
@@ -111,11 +113,13 @@ int RelStatus = 0;
 int Vergrendel = 0;
 int Goto;
 int State;
+int CalLinks;
+int CalRechts;
 
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
 unsigned long RelaisMillis = 0; // voor snelheid LED
-long Snelheid = SnelInst*5;  // snelheid servo
+unsigned long Snelheid = EEPROMReadlong(3);  // snelheid servo
 unsigned long currentMillis = millis();
 unsigned long FlashMillis = 0;
 unsigned long Flash =500;
@@ -135,14 +139,33 @@ Bounce DKLinks = Bounce();
 void Configureer()
 {
     Servo.write(90); // zet servo in middenstand
-    StatusLed.setPixelColor(0, 0, 0, 255);  //statusled gaat naar programeer stand
+    StatusLed.setPixelColor(0, 0, 230, 230);  //statusled gaat naar programeer stand
     StatusLed.show();
     int ProgrammerStap = 1;  //Terugmelding via statusled
-    const long FlashShort = 100;  // snelknipperen
-    // const long Pauze = 500; // pauzen tussen snelknipperen
-    int TimerPrevious = 0; // Voor de timer
-    int CalLinks=EindLinks;
-    int CalRechts=EindRechts;
+    
+   
+    
+    
+    if(EindLinks >180){
+         CalLinks = 90;
+    }else
+    {
+         CalLinks=EindLinks;
+    }
+
+    if(EindRechts >180){
+        CalRechts = 90;
+    }else
+    {
+        
+        CalRechts=EindRechts;
+    }
+
+    if(Snelheid >255)Snelheid = 128;
+    
+    
+    
+
 
 
 
@@ -246,7 +269,7 @@ void Configureer()
                 }
                 else
                 {
-                    StatusLed.setPixelColor(0, 0, 255, 0);
+                    StatusLed.setPixelColor(0, 255, 0, 0);
                     StatusLed.show();
                 }
 
@@ -267,17 +290,26 @@ void Configureer()
                     EEPROMWriteLong(3,Snelheid);
 
                 }
-                if (Snelheid > 253 | Snelheid < 2)
+                if (Snelheid > 253)
                 {
-                    StatusLed.setPixelColor(0, 255, 0, 0, 0);
+                    StatusLed.setPixelColor(0, 128, 0, 128, 0);
                     StatusLed.show();
                     endstate = 1;
+                    Snelheid = 254;
 
+                }
+                else if (Snelheid < 1)
+                {
+                    StatusLed.setPixelColor(0,128 ,0, 128, 0);
+                    StatusLed.show();
+                    endstate = 1;
+                    Snelheid = 0;
                 }
                 else
                 {
                     endstate = 0;
                 }
+                
 
             }
 
@@ -302,7 +334,7 @@ void Configureer()
 
             if (digitalRead(RelConf) == 0) 
             {
-
+                    EEPROM.write(8,DKMode); 
                     ProgrammerStap = 5;
                     delay(1000);
                     
@@ -311,7 +343,10 @@ void Configureer()
             break;
 
         case 5:
+            
+            EEPROM.write(0,1);
             Mode = 0;
+
             break;    
 
         }
@@ -371,7 +406,7 @@ void setup()
 
             if (State == LOW)
             {
-                StatusLed.setPixelColor(0, 0, 0, 255);
+                StatusLed.setPixelColor(0, 230, 230, 0);
                 State = HIGH;
             }
             else
@@ -388,9 +423,9 @@ void setup()
 
     // zet PB4 terug op uitgang voor relais
     pinMode(RelConf, OUTPUT);
-
+ 
     // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
-    if (VoorKeur == 1 | digitalRead(BUTTON_RECHTS == 0))
+    if ((VoorKeur == 1) | (digitalRead(BUTTON_RECHTS == 0)))
     {
         Servo.write(EindLinks);
         PosServo = Links;

@@ -18,6 +18,15 @@ Long EEPROM write ingebouwd voor de timers
 
 Drukknop mode ingebouwd. (65,6% geheugen vrij)
 
+## V0.103c 10-8-2020
+
+Eeprom read en write toegevoegd
+
+Fuse aangepast zodat eeprom behouden blijft na schrijven
+
+Instelroutine aangepast zodat bij lege eeprom standard instellingen worden aangenomen
+
+
 
 
 
