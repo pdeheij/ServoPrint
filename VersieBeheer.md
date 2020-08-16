@@ -30,6 +30,9 @@ Instelroutine aangepast zodat bij lege eeprom standard instellingen worden aange
 
 IO pins aangepast aan printje
 
+## V0.104a 16-8-2020
+
+Knipper LED aan het toevoegen
 
 
 

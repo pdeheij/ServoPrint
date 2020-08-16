@@ -18,48 +18,14 @@ const int BUTTON_RECHTS = PB4;  // Drukknop Rechts
 const int BUTTON_LINKS = PB3;   // Drukknop Links
 const int Status = PB2;  // Status Led
 const int RelConf = PB5;   // Relais of configuratie
+const int LED = PB0; // LED aan uitgang
 const int LedCount = 1; // aantal Leds
 const int Rechts = 0; //Rechts = 0
 const int Links = 1; // Links = 1
-
-
-/*
-   EEPROM GEBRUIK
-   0    Configuratie aanwezig dan is deze 1
-
-   1    EindLinks
-        0-180 voor eindstand servo links
-
-   2    EindRechts
-        0-180 voor eindstand servo Rechts
-
-   3,4,5,6   Snelheid
-        1-255 voor snelheid in stappen van 5 ms
-
-   7   Voorkeur
-        1 = Links voorkeur opstarten
-        2 = Rechts voorkeur opstarten
-
-   8    DKMode
-        1 = Drukknoppen links en rechts *
-        2 = Schakelaar op drukknop Rechts
-
-   9   LedMod
-        1 = Uit
-        2 = knippert altijd
-        3 = Flash
-        4 = Flash bij servo naar rechts
-        5 = Flash bij servo naar links
-        6 = Knippert tijdens Servo beweging
-        7 = Knippert bij servo naar Rechts 
-        8 = knippert bij servo naar rechts
-
-   10,11,12,13    LedKnip
-        0-255 voor knipper snelheid led
+const int Rood = 0x00FF00;
 
 
 
-*/
 
 // Schrijven Long naar EEPROM
 void EEPROMWriteLong(int adres,long waarde)
@@ -87,15 +53,51 @@ long EEPROMReadlong(long adres)
     return((four << 0) & 0xFF) + ((three  << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
 }
 
+/*
+   EEPROM GEBRUIK
+   0    Configuratie aanwezig dan is deze 1
 
+   1    EindLinks
+        0-180 voor eindstand servo links
+
+   2    EindRechts
+        0-180 voor eindstand servo Rechts
+
+   3,4,5,6   Snelheid
+        1-255 voor snelheid in stappen van 5 ms
+
+   7   Voorkeur
+        1 = Links voorkeur opstarten
+        2 = Rechts voorkeur opstarten
+
+   8    DKMode
+        1 = Drukknoppen links en rechts *
+        2 = Schakelaar op drukknop Rechts
+
+   9   LedMod
+        1 = Uit
+        2 = knippert altijd
+        3 = Flash bij servo naar rechts
+        4 = Flash bij servo naar links
+        5 = Knippert tijdens Servo beweging
+        6 = Knippert bij servo naar Rechts 
+        7 = knippert bij servo naar rechts
+
+   10,11,12,13    LedKnip
+        0-255 voor knipper snelheid led
+
+
+
+*/
 
 int Configuratie = EEPROM.read(0);
 int EindLinks = EEPROM.read(1);  // eind stand servo links
 int EindRechts = EEPROM.read(2);  // eind stand servo rechts
 int DKMode = EEPROM.read(8);//DK Mode 
-
-int RelMod = 1;  // Relais mode 
-const long RelKnip = 100*5; // Relais knipper snelhied
+int RelMod = 1;
+int LedMod = 7;  // Led Mode
+const long LedKnip = 100*5; // Relais knipper snelhied
+const long Flash = 500;
 int VoorKeur = 1; // Voorkeur opstart stand
 
 
@@ -106,7 +108,7 @@ int NaarRechts = 0; // Marker rechts ingedrukt
 int ContLinks = 0;
 int ContRechts = 0;
 int Stel; // Servo positie om te settten
-int ledState;
+int ledState = HIGH;
 int endstate;
 int PosServo; // Actuele servo positie 0 = Rechts 1 = Links
 int RelStatus = 0;
@@ -115,6 +117,7 @@ int Goto;
 int State;
 int CalLinks;
 int CalRechts;
+int KnipperenMag = 0;
 
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
@@ -122,7 +125,8 @@ unsigned long RelaisMillis = 0; // voor snelheid LED
 unsigned long Snelheid = EEPROMReadlong(3);  // snelheid servo
 unsigned long currentMillis = millis();
 unsigned long FlashMillis = 0;
-unsigned long Flash =500;
+unsigned long KnipperMillis = 0;
+
 
 // class defenities
 
@@ -374,10 +378,12 @@ void setup()
     // zet pinnen in juiste stand
     pinMode(BUTTON_RECHTS, INPUT_PULLUP); // ingang met Pullup
     pinMode(BUTTON_LINKS, INPUT_PULLUP);  // ingang met pulup
+    pinMode(LED, OUTPUT);
     pinMode(RelConf, INPUT); // ingang zonder pullup voor mode 
 
     // start en reset NeoPixel 
     StatusLed.begin();
+    StatusLed.setBrightness(32);
     StatusLed.show();
 
     // Debounce de drukknoppen links en rechts
@@ -427,15 +433,19 @@ void setup()
     // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
     if ((VoorKeur == 1) | (digitalRead(BUTTON_RECHTS == 0)))
     {
+        
         Servo.write(EindLinks);
+        delay(15);
         PosServo = Links;
         StatusLed.setPixelColor(0, 255, 0, 0);
         StatusLed.show();
         if (RelMod == 1) digitalWrite(RelConf, HIGH);
     }
     else
-    {
+    {        
+        
         Servo.write(EindRechts);
+        delay(15);        
         PosServo = Rechts;
         StatusLed.setPixelColor(0, 0, 255, 0);
         StatusLed.show();
@@ -455,14 +465,14 @@ void loop()
     if (DKRechts.read() == 0 &&  PosServo == Links && DKMode == 1)
     {
         Stel = EindLinks; // Begin stand
-        NaarRechts = 1; // servo gaat naar rechts
+        NaarRechts = 1; // servo gaat naar rechts        
     }
 
     // Drukknop servo naar links ingedrukt
     if (DKLinks.read() == 0 && PosServo == Rechts && DKMode == 1)
     {
         Stel = EindRechts; //Begin stand
-        NaarLinks = 1; //servo gaat naar links
+        NaarLinks = 1; //servo gaat naar links       
     }
 
     if (DKRechts.read() == 0 && PosServo == Links && DKMode == 2 && Vergrendel == 0)
@@ -504,6 +514,7 @@ void loop()
                 NaarLinks = 0;
                 PosServo = Links;
                 Vergrendel = 0;
+                         
             }
 
         }
@@ -518,7 +529,7 @@ void loop()
             if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)+EindRechts)
             {
                 digitalWrite(RelConf, LOW);
-                StatusLed.setPixelColor(0, 0, 255, 0);
+                StatusLed.setPixelColor(0, Rood);
                 StatusLed.show();
             }
             // Is de eindstand bereikt ?          
@@ -527,12 +538,40 @@ void loop()
                 NaarRechts = 0;
                 PosServo = Rechts;
                 Vergrendel = 0;
+                              
 
             }
 
         }
 
     }
+     
+     if ((LedMod == 2) | (LedMod == 7 && PosServo == Links && Vergrendel == 0) | (LedMod == 6 && PosServo == Rechts && Vergrendel == 0)|(LedMod == 5 && Vergrendel == 1))
+     { KnipperenMag = 1;}
+     else
+     {
+         KnipperenMag = 0;
+     }
+     
+
+
+
+    // knipperroutine LED
+    if (currentMillis-KnipperMillis >= LedKnip)
+     { 
+         KnipperMillis = currentMillis;
+         if (KnipperenMag == 1 && ledState == LOW)
+         {
+          ledState = HIGH;
+         }
+         else if (KnipperenMag == 1 && ledState == HIGH)
+         {
+          ledState = LOW;
+         }
+         else if (KnipperenMag == 0) digitalWrite(LED, LOW);
+      
+        digitalWrite(LED,ledState);
+     }
 
 
 }
