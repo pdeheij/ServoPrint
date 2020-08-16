@@ -95,7 +95,7 @@ int EindLinks = EEPROM.read(1);  // eind stand servo links
 int EindRechts = EEPROM.read(2);  // eind stand servo rechts
 int DKMode = EEPROM.read(8);//DK Mode 
 int RelMod = 1;
-int LedMod = 7;  // Led Mode
+int LedMod = 5;  // Led Mode
 const long LedKnip = 100*5; // Relais knipper snelhied
 const long Flash = 500;
 int VoorKeur = 1; // Voorkeur opstart stand
@@ -465,14 +465,16 @@ void loop()
     if (DKRechts.read() == 0 &&  PosServo == Links && DKMode == 1)
     {
         Stel = EindLinks; // Begin stand
-        NaarRechts = 1; // servo gaat naar rechts        
+        NaarRechts = 1; // servo gaat naar rechts 
+        Vergrendel = 1 ;       
     }
 
     // Drukknop servo naar links ingedrukt
     if (DKLinks.read() == 0 && PosServo == Rechts && DKMode == 1)
     {
         Stel = EindRechts; //Begin stand
-        NaarLinks = 1; //servo gaat naar links       
+        NaarLinks = 1; //servo gaat naar links 
+        Vergrendel = 1;      
     }
 
     if (DKRechts.read() == 0 && PosServo == Links && DKMode == 2 && Vergrendel == 0)
@@ -568,7 +570,7 @@ void loop()
          {
           ledState = LOW;
          }
-         else if (KnipperenMag == 0) digitalWrite(LED, LOW);
+         else if (KnipperenMag == 0) ledState = HIGH;
       
         digitalWrite(LED,ledState);
      }
