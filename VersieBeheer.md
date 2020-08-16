@@ -26,6 +26,11 @@ Fuse aangepast zodat eeprom behouden blijft na schrijven
 
 Instelroutine aangepast zodat bij lege eeprom standard instellingen worden aangenomen
 
+## V0.103d 16-8-2020
+
+IO pins aangepast aan printje
+
+
 
 
 

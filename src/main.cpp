@@ -13,11 +13,11 @@
 
 // Pin defenities
 
-const int ServoPin = PB4;   // Servo Pin
-const int BUTTON_RECHTS = PB1;  // Drukknop Rechts
-const int BUTTON_LINKS = PB2;   // Drukknop Links
-const int Status = PB3;  // Status Led
-const int RelConf = PB0;   // Relais of configuratie
+const int ServoPin = PB1;   // Servo Pin
+const int BUTTON_RECHTS = PB4;  // Drukknop Rechts
+const int BUTTON_LINKS = PB3;   // Drukknop Links
+const int Status = PB2;  // Status Led
+const int RelConf = PB5;   // Relais of configuratie
 const int LedCount = 1; // aantal Leds
 const int Rechts = 0; //Rechts = 0
 const int Links = 1; // Links = 1
