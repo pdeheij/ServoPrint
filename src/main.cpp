@@ -1,4 +1,4 @@
-// ServoPrint V0.103a
+// ServoPrint V0.104b
 // Bij P.M. de Heij   11-7-2020
 // status: ontwikkeling
 
@@ -22,7 +22,8 @@ const int LED = PB0; // LED aan uitgang
 const int LedCount = 1; // aantal Leds
 const int Rechts = 0; //Rechts = 0
 const int Links = 1; // Links = 1
-const int Rood = 0x00FF00;
+
+
 
 
 
@@ -52,6 +53,9 @@ long EEPROMReadlong(long adres)
 
     return((four << 0) & 0xFF) + ((three  << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
 }
+
+
+
 
 /*
    EEPROM GEBRUIK
@@ -118,7 +122,12 @@ int State;
 int CalLinks;
 int CalRechts;
 int KnipperenMag = 0;
+int ingedrukt = 0;
 
+const long Rood = 0x00FF00;  // gRb
+const long Groen = 0xFF0000; // Grb
+const long Blauw = 0x0000FF; //grB
+const long Geel = 0xFF00FF; //GrB
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
 unsigned long RelaisMillis = 0; // voor snelheid LED
@@ -126,7 +135,7 @@ unsigned long Snelheid = EEPROMReadlong(3);  // snelheid servo
 unsigned long currentMillis = millis();
 unsigned long FlashMillis = 0;
 unsigned long KnipperMillis = 0;
-
+unsigned long ConfKnipper = 0;
 
 // class defenities
 
@@ -135,7 +144,16 @@ Adafruit_NeoPixel StatusLed(LedCount, Status, NEO_GRB + NEO_KHZ800);
 Bounce DKRechts = Bounce();
 Bounce DKLinks = Bounce();
 
+// tweekleuren knipper voor config
+void DuoKnipper(int kleur1, int kleur2)
+{
+    currentMillis = millis();
 
+    if (currentMillis - ConfKnipper >= 500)
+    {
+      ConfKnipper = currentMillis;
+    }
+}
 
 
 // Configureer mode als jumper op dk staat
@@ -179,10 +197,12 @@ void Configureer()
 
 
 
-
-    while (digitalRead(RelConf == 1))
+    
+    while (ingedrukt == 0)
     {
+        if (digitalRead(RelConf) == 0)ingedrukt = 1;
     }
+
     delay(1000);
 
     while (Mode == 1)
@@ -296,7 +316,7 @@ void Configureer()
                 }
                 if (Snelheid > 253)
                 {
-                    StatusLed.setPixelColor(0, 128, 0, 128, 0);
+                    StatusLed.setPixelColor(0, 128 , 0 , 128);
                     StatusLed.show();
                     endstate = 1;
                     Snelheid = 254;
@@ -304,10 +324,10 @@ void Configureer()
                 }
                 else if (Snelheid < 1)
                 {
-                    StatusLed.setPixelColor(0,128 ,0, 128, 0);
+                    StatusLed.setPixelColor(0, 128 , 0 , 128);
                     StatusLed.show();
                     endstate = 1;
-                    Snelheid = 0;
+                    Snelheid = 2;
                 }
                 else
                 {
@@ -323,12 +343,12 @@ void Configureer()
            
             if (DKMode == 1 )
             {
-                StatusLed.setPixelColor(0,255,0,0);
+                StatusLed.setPixelColor(0,Groen);
                 StatusLed.show();
             }
             else if (DKMode == 2)
             {
-                StatusLed.setPixelColor(0,0,255,0);
+                StatusLed.setPixelColor(0,Rood);
                 StatusLed.show();
             }
             if (DKLinks.read() == 0) DKMode=2;
@@ -437,7 +457,7 @@ void setup()
         Servo.write(EindLinks);
         delay(15);
         PosServo = Links;
-        StatusLed.setPixelColor(0, 255, 0, 0);
+        StatusLed.setPixelColor(0, Groen);
         StatusLed.show();
         if (RelMod == 1) digitalWrite(RelConf, HIGH);
     }
@@ -447,7 +467,7 @@ void setup()
         Servo.write(EindRechts);
         delay(15);        
         PosServo = Rechts;
-        StatusLed.setPixelColor(0, 0, 255, 0);
+        StatusLed.setPixelColor(0, Rood);
         StatusLed.show();
         if (RelMod == 1)digitalWrite(RelConf, LOW);
     }
@@ -507,7 +527,7 @@ void loop()
             {
 
                 digitalWrite(RelConf, HIGH);
-                StatusLed.setPixelColor(0, 255, 0, 0);
+                StatusLed.setPixelColor(0, Groen);
                 StatusLed.show();
             }
             // is de eindstand bereikt?

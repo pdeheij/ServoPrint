@@ -34,6 +34,9 @@ IO pins aangepast aan printje
 
 Knipper LED aan het toevoegen
 
+## V0.104b 17-8-2020
+
+Kleine dingen voor optimalisern code
 
 
 
