@@ -44,6 +44,10 @@ Voorkeur keuze in setup toegevoegd
 Wat niet gebruikte variabelen verwijderd.
 !! Relais schakelt niet meer mee
 
+## V0.105b 22-8-2020
+
+Knipperen werkt relais ook weer
+
 
 
 

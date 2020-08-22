@@ -1,4 +1,4 @@
-// ServoPrint V0.105a
+// ServoPrint V0.105b
 // Bij P.M. de Heij   11-7-2020
 // status: ontwikkeling
 
@@ -81,11 +81,11 @@ long EEPROMReadlong(long adres)
    9   LedMod
         1 = Uit
         2 = knippert altijd
-        3 = Flash bij servo naar rechts
-        4 = Flash bij servo naar links
-        5 = Knippert tijdens Servo beweging
-        6 = Knippert bij servo naar Rechts 
-        7 = knippert bij servo naar rechts
+        3 = Knippert tijdens Servo beweging
+        4 = Knippert bij servo naar Rechts 
+        5 = knippert bij servo naar rechts
+        6 = Flash bij servo naar rechts
+        7 = Flash bij servo naar links
 
    10,11,12,13    LedKnip
         0-255 voor knipper snelheid led
@@ -98,7 +98,7 @@ int Configuratie = EEPROM.read(0);
 int EindLinks = EEPROM.read(1);  // eind stand servo links
 int EindRechts = EEPROM.read(2);  // eind stand servo rechts
 int DKMode = EEPROM.read(8);//DK Mode 
-int LedMod = 5;  // Led Mode
+int LedMod = EEPROM.read(9);  // Led Mode
 const long LedKnip = 100*5; // Relais knipper snelhied
 const long Flash = 500;
 int VoorKeur = EEPROM.read(7); // Voorkeur opstart stand
@@ -124,11 +124,13 @@ int KnipperenMag = 0;
 int ingedrukt = 0;
 int DuoStat = LOW;
 
-const long Rood = 0xFF0000;  // gRb
-const long Groen = 0x00FF00; // Grb
-const long Blauw = 0x0000FF; //grB
-const long Geel = 0xFFF600; //GRB
-const long Cyaan = 0x00FFF6; //gRB
+const long Rood = 0xFF0000;  
+const long Groen = 0x00FF00; 
+const long Blauw = 0x0000FF; 
+const long Geel = 0xF6FF00; 
+const long Cyaan = 0xFF00F6;
+const long Grijs = 0xA8A8A8;
+const long Uit = 0x0;
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
 unsigned long RelaisMillis = 0; // voor snelheid LED
@@ -168,14 +170,35 @@ void DuoKnipper(const long kleur1, const long kleur2)
       
     }
 }
+// knipperroutine LED
+void KnipperenLed()
+    {
 
+    currentMillis = millis();
+
+    if (currentMillis-KnipperMillis >= LedKnip)
+     { 
+         KnipperMillis = currentMillis;
+         if (KnipperenMag == 1 && ledState == LOW)
+         {
+          ledState = HIGH;
+         }
+         else if (KnipperenMag == 1 && ledState == HIGH)
+         {
+          ledState = LOW;
+         }
+         else if (KnipperenMag == 0) ledState = HIGH;
+      
+        digitalWrite(LED,ledState);
+     }
+    }
 
 // Configureer mode als jumper op dk staat
 
 void Configureer()
 {
     Servo.write(90); // zet servo in middenstand
-    StatusLed.setPixelColor(0, 0, 230, 230);  //statusled gaat naar programeer stand
+    StatusLed.setPixelColor(0, Blauw);  //statusled gaat naar programeer stand
     StatusLed.show();
     int ProgrammerStap = 1;  //Terugmelding via statusled
     
@@ -201,6 +224,7 @@ void Configureer()
     }
 
     if(Snelheid >255)Snelheid = 128;
+    if(LedMod < 1 || LedMod >5)LedMod = 1;
 
     // Servo in middenstand voor afstellen, wacht tot set/prog wordt ingedrukt
 
@@ -297,12 +321,12 @@ void Configureer()
 
                 if (ledState == 1 && endstate == 0)
                 {
-                    StatusLed.setPixelColor(0, 0, 0, 0);
+                    StatusLed.setPixelColor(0, Uit);
                     StatusLed.show();
                 }
                 else
                 {
-                    StatusLed.setPixelColor(0, 255, 0, 0);
+                    StatusLed.setPixelColor(0, Geel);
                     StatusLed.show();
                 }
 
@@ -313,7 +337,7 @@ void Configureer()
                 delay(5);
                 if (DKRechts.read() == 0) {
                     Snelheid = Snelheid -1;
-                    if (Snelheid <= 0)Snelheid = 0;
+                    if (Snelheid <= 1)Snelheid = 1;
                 }
                 delay(5);
                 if (digitalRead(RelConf) == 0) {
@@ -323,20 +347,20 @@ void Configureer()
                     EEPROMWriteLong(3,Snelheid);
 
                 }
-                if (Snelheid > 253)
+                if (Snelheid == 255)
                 {
-                    StatusLed.setPixelColor(0, 128 , 0 , 128);
+                    StatusLed.setPixelColor(0, Rood);
                     StatusLed.show();
                     endstate = 1;
-                    Snelheid = 254;
+                   
 
                 }
-                else if (Snelheid < 1)
+                else if (Snelheid == 1)
                 {
-                    StatusLed.setPixelColor(0, 128 , 0 , 128);
+                    StatusLed.setPixelColor(0, Rood);
                     StatusLed.show();
                     endstate = 1;
-                    Snelheid = 2;
+                  
                 }
                 else
                 {
@@ -379,37 +403,91 @@ void Configureer()
 
             if (VoorKeur == 1 )
             {
-                DuoKnipper(Geel,Groen);
+                DuoKnipper(Geel,Rood);
             }
             else if (VoorKeur == 2)
             {
-                DuoKnipper(Geel,Rood);
+                DuoKnipper(Geel,Groen);
             }
-            if (DKLinks.read() == 0) VoorKeur=2;
-            delay(5);
-            if (DKRechts.read() == 0)VoorKeur=1;
-            delay(5);
+            if (DKLinks.rose() ) VoorKeur=2;
+            if (DKRechts.rose() )VoorKeur=1;
 
             if (digitalRead(RelConf) == 0) 
             {
                     EEPROM.write(7,VoorKeur); 
                     ProgrammerStap = 6;
-                    StatusLed.setPixelColor(0,0,0,0);
+                    StatusLed.setPixelColor(0,Uit);
                     StatusLed.show();
                     delay(1000);
-                
-
             }    
             
-
             break;  
 
         case 6: // LED Mode
 
-           EEPROM.write(0,1);
+            if (DKLinks.rose())
+            {
+               LedMod ++;
+               if (LedMod >= 5)LedMod = 5;
+            } 
+            
+            if (DKRechts.rose())
+            {
+                LedMod --;
+                if(LedMod>=1)LedMod = 1;
+            }    
+        
+
+            if (LedMod == 1)
+            {
+               StatusLed.setPixelColor(0,Grijs);
+               StatusLed.show();
+               KnipperenMag = 0;
+            }
+            if (LedMod == 2)
+            {
+                DuoKnipper(Grijs,Uit);
+                KnipperenMag = 1;
+            }
+            if (LedMod == 3)
+            {
+                DuoKnipper(Grijs,Cyaan);
+                KnipperenMag = 1;
+            }
+            if (LedMod == 4)
+            {
+                DuoKnipper(Grijs,Groen);
+                KnipperenMag = 1;
+            }
+            if (LedMod == 5)
+            {
+                DuoKnipper(Grijs,Rood);
+                KnipperenMag = 1;
+            }
+
+
+            if (digitalRead(RelConf) == 0) 
+            {
+                    EEPROM.write(9,LedMod); 
+                    ProgrammerStap = 7;
+                    StatusLed.setPixelColor(0,0,0,0);
+                    StatusLed.show();
+                    KnipperenMag = 0;
+                    delay(1000);
+            }  
+
+                    
+            KnipperenLed();
+
+
+           break; 
+
+        case 7: // knippersnelheid
+
+            EEPROM.write(0,1);
             Mode = 0;
 
-           break;   
+          break;     
 
         }
 
@@ -489,7 +567,7 @@ void setup()
     pinMode(RelConf, OUTPUT);
  
     // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
-    if ((VoorKeur == 1) | (digitalRead(BUTTON_RECHTS == 0)))
+    if (VoorKeur == 1) 
     {
         
         Servo.write(EindLinks);
@@ -606,7 +684,7 @@ void loop()
 
     }
      
-     if ((LedMod == 2) | (LedMod == 7 && PosServo == Links && Vergrendel == 0) | (LedMod == 6 && PosServo == Rechts && Vergrendel == 0)|(LedMod == 5 && Vergrendel == 1))
+     if ((LedMod == 2) | (LedMod == 4 && PosServo == Links && Vergrendel == 0) | (LedMod == 5 && PosServo == Rechts && Vergrendel == 0)|(LedMod == 3 && Vergrendel == 1))
      { KnipperenMag = 1;}
      else
      {
@@ -614,24 +692,8 @@ void loop()
      }
      
 
-
-
-    // knipperroutine LED
-    if (currentMillis-KnipperMillis >= LedKnip)
-     { 
-         KnipperMillis = currentMillis;
-         if (KnipperenMag == 1 && ledState == LOW)
-         {
-          ledState = HIGH;
-         }
-         else if (KnipperenMag == 1 && ledState == HIGH)
-         {
-          ledState = LOW;
-         }
-         else if (KnipperenMag == 0) ledState = HIGH;
-      
-        digitalWrite(LED,ledState);
-     }
+    KnipperenLed();
+    
 
 
 }
