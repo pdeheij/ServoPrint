@@ -38,6 +38,12 @@ Knipper LED aan het toevoegen
 
 Kleine dingen voor optimalisern code
 
+## V0.105a 22-8-2020
+
+Voorkeur keuze in setup toegevoegd
+Wat niet gebruikte variabelen verwijderd.
+!! Relais schakelt niet meer mee
+
 
 
 

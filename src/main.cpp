@@ -1,4 +1,4 @@
-// ServoPrint V0.104b
+// ServoPrint V0.105a
 // Bij P.M. de Heij   11-7-2020
 // status: ontwikkeling
 
@@ -98,11 +98,10 @@ int Configuratie = EEPROM.read(0);
 int EindLinks = EEPROM.read(1);  // eind stand servo links
 int EindRechts = EEPROM.read(2);  // eind stand servo rechts
 int DKMode = EEPROM.read(8);//DK Mode 
-int RelMod = 1;
 int LedMod = 5;  // Led Mode
 const long LedKnip = 100*5; // Relais knipper snelhied
 const long Flash = 500;
-int VoorKeur = 1; // Voorkeur opstart stand
+int VoorKeur = EEPROM.read(7); // Voorkeur opstart stand
 
 
 // Variable
@@ -123,11 +122,13 @@ int CalLinks;
 int CalRechts;
 int KnipperenMag = 0;
 int ingedrukt = 0;
+int DuoStat = LOW;
 
 const long Rood = 0x00FF00;  // gRb
 const long Groen = 0xFF0000; // Grb
 const long Blauw = 0x0000FF; //grB
-const long Geel = 0xFF00FF; //GrB
+const long Geel = 0xFFF600; //GRB
+const long Cyaan = 0x00FFF6; //gRB
 
 unsigned long ServoMillis = 0; // voor snelheid dervo
 unsigned long RelaisMillis = 0; // voor snelheid LED
@@ -145,13 +146,26 @@ Bounce DKRechts = Bounce();
 Bounce DKLinks = Bounce();
 
 // tweekleuren knipper voor config
-void DuoKnipper(int kleur1, int kleur2)
+void DuoKnipper(const long kleur1, const long kleur2)
 {
     currentMillis = millis();
 
     if (currentMillis - ConfKnipper >= 500)
     {
       ConfKnipper = currentMillis;
+      if (DuoStat == LOW)
+      {
+          StatusLed.setPixelColor(0,kleur1);
+          StatusLed.show();
+          DuoStat = HIGH;
+      }
+      else
+      {
+          StatusLed.setPixelColor(0,kleur2);
+          StatusLed.show();
+          DuoStat = LOW;
+      }
+      
     }
 }
 
@@ -166,44 +180,39 @@ void Configureer()
     int ProgrammerStap = 1;  //Terugmelding via statusled
     
    
-    
-    
-    if(EindLinks >180){
-         CalLinks = 90;
-    }else
+    // Controleer de EEprom waarde en verander deze als ze buiten de specs vallen
+
+    if (EindLinks > 180)
     {
-         CalLinks=EindLinks;
+        CalLinks = 90;
+    }
+    else
+    {
+        CalLinks = EindLinks;
     }
 
-    if(EindRechts >180){
-        CalRechts = 90;
-    }else
+    if (EindRechts > 180)
     {
-        
-        CalRechts=EindRechts;
+        CalRechts = 90;
+    }
+    else
+    {
+        CalRechts = EindRechts;
     }
 
     if(Snelheid >255)Snelheid = 128;
-    
-    
-    
 
-
-
-
-
-
-
-
-
+    // Servo in middenstand voor afstellen, wacht tot set/prog wordt ingedrukt
 
     
+
     while (ingedrukt == 0)
     {
         if (digitalRead(RelConf) == 0)ingedrukt = 1;
     }
-
     delay(1000);
+
+    // Zolang we programmeren blijven we in deze lus
 
     while (Mode == 1)
     {
@@ -366,12 +375,41 @@ void Configureer()
             }    
             break;
 
-        case 5:
+        case 5: // Voorkeur stand bij aanzetten (alleen drukknop)
+
+            if (VoorKeur == 1 )
+            {
+                DuoKnipper(Geel,Groen);
+            }
+            else if (VoorKeur == 2)
+            {
+                DuoKnipper(Geel,Rood);
+            }
+            if (DKLinks.read() == 0) VoorKeur=2;
+            delay(5);
+            if (DKRechts.read() == 0)VoorKeur=1;
+            delay(5);
+
+            if (digitalRead(RelConf) == 0) 
+            {
+                    EEPROM.write(7,VoorKeur); 
+                    ProgrammerStap = 6;
+                    StatusLed.setPixelColor(0,0,0,0);
+                    StatusLed.show();
+                    delay(1000);
+                    
+
+            }    
             
-            EEPROM.write(0,1);
+
+            break;  
+
+        case 6: // LED Mode
+
+           EEPROM.write(0,1);
             Mode = 0;
 
-            break;    
+           break;   
 
         }
 
@@ -459,7 +497,7 @@ void setup()
         PosServo = Links;
         StatusLed.setPixelColor(0, Groen);
         StatusLed.show();
-        if (RelMod == 1) digitalWrite(RelConf, HIGH);
+        digitalWrite(RelConf, HIGH);
     }
     else
     {        
@@ -469,7 +507,7 @@ void setup()
         PosServo = Rechts;
         StatusLed.setPixelColor(0, Rood);
         StatusLed.show();
-        if (RelMod == 1)digitalWrite(RelConf, LOW);
+        digitalWrite(RelConf, LOW);
     }
 
 
@@ -523,7 +561,7 @@ void loop()
             Stel = Stel + 1;
 
             // Zet Relais
-            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)+EindRechts)
+            if (Stel == ((EindLinks-EindRechts)/2)+EindRechts)
             {
 
                 digitalWrite(RelConf, HIGH);
@@ -548,7 +586,7 @@ void loop()
             Stel = Stel - 1;
 
             // Zet Relais
-            if (RelMod == 1 && Stel == ((EindLinks-EindRechts)/2)+EindRechts)
+            if (Stel == ((EindLinks-EindRechts)/2)+EindRechts)
             {
                 digitalWrite(RelConf, LOW);
                 StatusLed.setPixelColor(0, Rood);
