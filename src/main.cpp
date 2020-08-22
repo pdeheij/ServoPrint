@@ -124,8 +124,8 @@ int KnipperenMag = 0;
 int ingedrukt = 0;
 int DuoStat = LOW;
 
-const long Rood = 0x00FF00;  // gRb
-const long Groen = 0xFF0000; // Grb
+const long Rood = 0xFF0000;  // gRb
+const long Groen = 0x00FF00; // Grb
 const long Blauw = 0x0000FF; //grB
 const long Geel = 0xFFF600; //GRB
 const long Cyaan = 0x00FFF6; //gRB
@@ -225,7 +225,7 @@ void Configureer()
         {
         case  1:  // afstellen postitie Links
 
-            StatusLed.setPixelColor(0, 255, 0, 0);
+            StatusLed.setPixelColor(0, Groen);
             StatusLed.show();
             Servo.write(CalLinks);
             if (DKLinks.read() == 0) CalLinks=CalLinks+1;
@@ -243,14 +243,14 @@ void Configureer()
             break;
         case 2:  // afstellen postitie Rechts
 
-            StatusLed.setPixelColor(0, 0, 255, 0);
+            StatusLed.setPixelColor(0, Rood);
             StatusLed.show();
             Servo.write(CalRechts);
             if (DKLinks.read() == 0) CalRechts=CalRechts+1;
             delay(100);
             if (DKRechts.read() == 0) CalRechts=CalRechts-1;
             delay(100);
-            if (digitalRead(RelConf) == 0) {
+            if(digitalRead(RelConf) == 0) {
                 EEPROM.write(2, CalRechts);
                 ProgrammerStap = 3;
                 EindRechts = CalRechts;
@@ -352,13 +352,11 @@ void Configureer()
            
             if (DKMode == 1 )
             {
-                StatusLed.setPixelColor(0,Groen);
-                StatusLed.show();
+                DuoKnipper(Cyaan,Groen);
             }
             else if (DKMode == 2)
             {
-                StatusLed.setPixelColor(0,Rood);
-                StatusLed.show();
+                DuoKnipper(Cyaan,Rood);
             }
             if (DKLinks.read() == 0) DKMode=2;
             delay(5);
@@ -369,6 +367,8 @@ void Configureer()
             {
                     EEPROM.write(8,DKMode); 
                     ProgrammerStap = 5;
+                    StatusLed.setPixelColor(0,0,0,0);
+                    StatusLed.show();
                     delay(1000);
                     
 
@@ -397,7 +397,7 @@ void Configureer()
                     StatusLed.setPixelColor(0,0,0,0);
                     StatusLed.show();
                     delay(1000);
-                    
+                
 
             }    
             
@@ -441,7 +441,7 @@ void setup()
 
     // start en reset NeoPixel 
     StatusLed.begin();
-    StatusLed.setBrightness(32);
+    StatusLed.setBrightness(16);
     StatusLed.show();
 
     // Debounce de drukknoppen links en rechts
