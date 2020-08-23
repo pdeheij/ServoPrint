@@ -48,6 +48,12 @@ Wat niet gebruikte variabelen verwijderd.
 
 Knipperen werkt relais ook weer
 
+## V0.106a 23-8-2020
+
+Nog 1 bug
+Code opschonen
+Bijna V1
+
 
 
 
