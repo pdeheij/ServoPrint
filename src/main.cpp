@@ -1,4 +1,4 @@
-// ServoPrint V0.106a
+// ServoPrint V0.106b
 // Bij P.M. de Heij   11-7-2020
 // status: ontwikkeling
 
@@ -81,7 +81,7 @@ long EEPROMReadLong(long adres)
         7 = Flash bij servo naar links
 
    10,11,12,13    LedKnip
-        0-255 voor knipper snelheid led
+        0-1000 stapjes 25 ms voor knipper snelheid led
 
 
 
@@ -94,30 +94,25 @@ unsigned long Snelheid = EEPROMReadLong(3);  // snelheid servo
 int VoorKeur = EEPROM.read(7); // Voorkeur opstart stand
 int DKMode = EEPROM.read(8); // Werking Drukknopen 
 int LedMod = EEPROM.read(9);  // Werking LED
-long LedKnip = EEPROMReadLong(10); // Knipper snelheid LED
+unsigned long LedKnip = EEPROMReadLong(10); // Knipper snelheid LED
 
 
 
 
 // Variable
-int Mode = 0; //Normaal 0 in progmode 1
+int Mode = 0; // Geeft weer of we 0 in bedrijf zijn of 1 an het programmeren
 int NaarLinks = 0; // Marker links ingedrukt
 int NaarRechts = 0; // Marker rechts ingedrukt
-int ContLinks = 0;
-int ContRechts = 0;
 int Stel; // Servo positie om te settten
 int ledState = HIGH;
 int endstate;
 int PosServo; // Actuele servo positie 0 = Rechts 1 = Links
-int RelStatus = 0;
-int Vergrendel = 0;
-int Goto;
-int State;
-int CalLinks;
-int CalRechts;
-int KnipperenMag = 0;
-int ingedrukt = 0;
-int DuoStat = LOW;
+int Vergrendel = 0; // Als we schakelaar gebruiken en deze terug zetten maken we eerst af
+int CalLinks; // callibratie in config
+int CalRechts; // callibratie in confog
+int KnipperenMag = 0; // Led knipperen 
+int ingedrukt = 0; //controle op indrukken set/prog
+int DuoStat = LOW; // stsustled knippren 
 const int LedCount = 1; // aantal Leds
 const int Rechts = 0; //Rechts = 0
 const int Links = 1; // Links = 1
@@ -221,12 +216,9 @@ void Configureer()
 
     if(Snelheid >255)Snelheid = 128;
     if(LedMod < 1 || LedMod >5)LedMod = 1;
-    if(LedKnip < 0 || LedKnip>100)LedKnip = 2;
+    if(LedKnip < 0 || LedKnip >1000 )LedKnip = 2;
 
     // Servo in middenstand voor afstellen, wacht tot set/prog wordt ingedrukt
-
-    
-
     while (ingedrukt == 0)
     {
         if (digitalRead(RelConf) == 0)ingedrukt = 1;
@@ -234,7 +226,6 @@ void Configureer()
     delay(1000);
 
     // Zolang we programmeren blijven we in deze lus
-
     while (Mode == 1)
     {
         currentMillis = millis();  // Actueel teller millis
@@ -251,10 +242,10 @@ void Configureer()
             Servo.write(CalLinks);
             if (DKLinks.read() == 0)
                 CalLinks = CalLinks + 1;
-            delay(100);
+            delay(50);
             if (DKRechts.read() == 0)
                 CalLinks = CalLinks - 1;
-            delay(100);
+            delay(50);
             if (digitalRead(RelConf) == 0)
             {
                 EEPROM.write(1, CalLinks);
@@ -272,10 +263,10 @@ void Configureer()
             Servo.write(CalRechts);
             if (DKLinks.read() == 0)
                 CalRechts = CalRechts + 1;
-            delay(100);
+            delay(50);
             if (DKRechts.read() == 0)
                 CalRechts = CalRechts - 1;
-            delay(100);
+            delay(50);
             if (digitalRead(RelConf) == 0)
             {
                 EEPROM.write(2, CalRechts);
@@ -393,8 +384,6 @@ void Configureer()
             {
                 EEPROM.write(8, DKMode);
                 ProgrammerStap = 5;
-                StatusLed.setPixelColor(0, 0, 0, 0);
-                StatusLed.show();
                 delay(1000);
             }
             break;
@@ -403,23 +392,21 @@ void Configureer()
 
             if (VoorKeur == 1)
             {
-                DuoKnipper(Geel, Rood);
+                DuoKnipper(Geel, Groen);
             }
             else if (VoorKeur == 2)
             {
-                DuoKnipper(Geel, Groen);
+                DuoKnipper(Geel, Rood);
             }
             if (DKLinks.rose())
-                VoorKeur = 2;
-            if (DKRechts.rose())
                 VoorKeur = 1;
+            if (DKRechts.rose())
+                VoorKeur = 2;
 
             if (digitalRead(RelConf) == 0)
             {
                 EEPROM.write(7, VoorKeur);
                 ProgrammerStap = 6;
-                StatusLed.setPixelColor(0, Uit);
-                StatusLed.show();
                 delay(1000);
             }
 
@@ -471,8 +458,6 @@ void Configureer()
             {
                 EEPROMWriteLong(9 , LedMod);
                 ProgrammerStap = 7;
-                StatusLed.setPixelColor(0, Uit);
-                StatusLed.show();
                 KnipperenMag = 0;
                 delay(1000);
             }
@@ -501,8 +486,6 @@ void Configureer()
             {
                 EEPROMWriteLong(10, LedKnip);
                 ProgrammerStap = 8;
-                StatusLed.setPixelColor(0, Uit);
-                StatusLed.show();
                 KnipperenMag = 0;
                 delay(1000);
             }
@@ -522,18 +505,17 @@ void Configureer()
 
 void setup()
 {
-    // Zet timer interupt voor servopuls    
+    // Zet timer interupt voor servopuls
     OCR0A = 0xAF;         // elk nummer is goed
-    TIMSK |= _BV(OCIE0A);  // Zet comperator interupt aan
-
+    TIMSK |= _BV(OCIE0A); // Zet comperator interupt aan
 
     // zet pinnen in juiste stand
     pinMode(BUTTON_RECHTS, INPUT_PULLUP); // ingang met Pullup
     pinMode(BUTTON_LINKS, INPUT_PULLUP);  // ingang met pulup
     pinMode(LED, OUTPUT);
-    pinMode(RelConf, INPUT); // ingang zonder pullup voor mode 
+    pinMode(RelConf, INPUT); // ingang zonder pullup voor mode
 
-    // start en reset NeoPixel 
+    // start en reset NeoPixel
     StatusLed.begin();
     StatusLed.setBrightness(16);
     StatusLed.show();
@@ -555,37 +537,18 @@ void setup()
     }
 
     // Terug uit programmeren vergeet niet de jumper terug te zetten
-    while (digitalRead(RelConf) == 1 && Mode ==0)
+    while (digitalRead(RelConf) == 1 && Mode == 0)
     {
-        currentMillis = millis();
-        if (currentMillis - FlashMillis >= Flash)
-        {
-            FlashMillis = currentMillis;
-
-            if (State == LOW)
-            {
-                StatusLed.setPixelColor(0, 230, 230, 0);
-                State = HIGH;
-            }
-            else
-            {
-                StatusLed.setPixelColor(0, 0, 0, 0);
-                State = LOW;
-            }
-
-            StatusLed.show();
-
-        }
-
+        DuoKnipper(Blauw, Uit);
     }
 
     // zet PB4 terug op uitgang voor relais
     pinMode(RelConf, OUTPUT);
- 
+
     // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
-    if (VoorKeur == 1) 
+    if (VoorKeur == 1 || (digitalRead(BUTTON_RECHTS) == 0 && DKMode == 2))
     {
-        
+
         Servo.write(EindLinks);
         delay(15);
         PosServo = Links;
@@ -593,57 +556,41 @@ void setup()
         StatusLed.show();
         digitalWrite(RelConf, HIGH);
     }
-    else
-    {        
-        
+    else if (VoorKeur == 2 || (digitalRead(BUTTON_RECHTS) == 1 && DKMode == 2))
+    {
+
         Servo.write(EindRechts);
-        delay(15);        
+        delay(15);
         PosServo = Rechts;
         StatusLed.setPixelColor(0, Rood);
         StatusLed.show();
         digitalWrite(RelConf, LOW);
     }
-
-
 }
 
 void loop()
 {
-    currentMillis = millis();  // Actueel teller millis     
-    DKRechts.update();
-    DKLinks.update();
+    currentMillis = millis(); // Actueel teller millis
+    DKRechts.update();        // voor bounce 2
+    DKLinks.update();         // voor bounce 2
 
-    // Drukknop servo naar rechts ingedrukt 
-    if (DKRechts.read() == 0 &&  PosServo == Links && DKMode == 1)
+    // Drukknop servo naar rechts ingedrukt
+    if ((DKRechts.rose() && PosServo == Links && DKMode == 1) || (DKRechts.read() == 0 && PosServo == Links && DKMode == 2 && Vergrendel == 0))
     {
         Stel = EindLinks; // Begin stand
-        NaarRechts = 1; // servo gaat naar rechts 
-        Vergrendel = 1 ;       
+        NaarRechts = 1;   // servo gaat naar rechts
+        Vergrendel = 1;
     }
 
     // Drukknop servo naar links ingedrukt
-    if (DKLinks.read() == 0 && PosServo == Rechts && DKMode == 1)
+    if ((DKLinks.rose() && PosServo == Rechts && DKMode == 1) || (DKRechts.read() == 1 && PosServo == Rechts && DKMode == 2 && Vergrendel == 0))
     {
         Stel = EindRechts; //Begin stand
-        NaarLinks = 1; //servo gaat naar links 
-        Vergrendel = 1;      
-    }
-
-    if (DKRechts.read() == 0 && PosServo == Links && DKMode == 2 && Vergrendel == 0)
-    {
-        Stel = EindLinks; //Begin stand
-        NaarRechts = 1; //servo gaat naar links
+        NaarLinks = 1;     //servo gaat naar links
         Vergrendel = 1;
     }
 
-    if (DKRechts.read() == 1 && PosServo == Rechts && DKMode == 2 && Vergrendel == 0)
-    {
-        Stel = EindRechts; //Begin stand
-        NaarLinks = 1; //servo gaat naar Rechts
-        Vergrendel = 1;
-    }
-
-    // Servo stel routine  
+    // Servo stel routine
     if (currentMillis - ServoMillis >= Snelheid)
     {
         ServoMillis = currentMillis;
@@ -655,22 +602,20 @@ void loop()
             Stel = Stel + 1;
 
             // Zet Relais
-            if (Stel == ((EindLinks-EindRechts)/2)+EindRechts)
+            if (Stel == ((EindLinks - EindRechts) / 2) + EindRechts)
             {
-
                 digitalWrite(RelConf, HIGH);
                 StatusLed.setPixelColor(0, Groen);
                 StatusLed.show();
             }
+
             // is de eindstand bereikt?
             if (Stel == EindLinks)
             {
                 NaarLinks = 0;
                 PosServo = Links;
                 Vergrendel = 0;
-                         
             }
-
         }
 
         // Naar Rechts
@@ -680,41 +625,34 @@ void loop()
             Stel = Stel - 1;
 
             // Zet Relais
-            if (Stel == ((EindLinks-EindRechts)/2)+EindRechts)
+            if (Stel == ((EindLinks - EindRechts) / 2) + EindRechts)
             {
                 digitalWrite(RelConf, LOW);
                 StatusLed.setPixelColor(0, Rood);
                 StatusLed.show();
             }
-            // Is de eindstand bereikt ?          
+            // Is de eindstand bereikt ?
             if (Stel == EindRechts)
             {
                 NaarRechts = 0;
                 PosServo = Rechts;
                 Vergrendel = 0;
-                              
-
             }
-
         }
-
     }
-     
-     if ((LedMod == 2) | (LedMod == 4 && PosServo == Links && Vergrendel == 0) | (LedMod == 5 && PosServo == Rechts && Vergrendel == 0)|(LedMod == 3 && Vergrendel == 1))
-     { KnipperenMag = 1;}
-     else
-     {
-         KnipperenMag = 0;
-     }
-     
+
+    // Bepaal wanneer Led moet knipperen
+    if ((LedMod == 2) | (LedMod == 4 && PosServo == Links && Vergrendel == 0) | (LedMod == 5 && PosServo == Rechts && Vergrendel == 0) | (LedMod == 3 && Vergrendel == 1))
+    {
+        KnipperenMag = 1;
+    }
+    else
+    {
+        KnipperenMag = 0;
+    }
 
     KnipperenLed();
-    
-
-
 }
-
-
 
 // Refresh elke 20 miliseconden servo met interupt timer 0
 volatile uint8_t counter = 0;

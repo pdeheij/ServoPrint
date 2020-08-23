@@ -54,6 +54,10 @@ Nog 1 bug
 Code opschonen
 Bijna V1
 
+## V0.106b 23-8-2020
+Snelheid config nog niet naar mijn zin
+Code opgeschoond
+Bijna V1
 
 
 
