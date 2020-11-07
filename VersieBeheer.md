@@ -59,6 +59,9 @@ Snelheid config nog niet naar mijn zin
 Code opgeschoond
 Bijna V1
 
+## V1.0 7-11-2020
+Nog zonder flash, uigaven voor 1ste gang
+Programma moet op de schop vanwegen te kort aan programma geheugen
 
 
 
