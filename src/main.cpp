@@ -1,6 +1,6 @@
-// ServoPrint V0.106b
+// ServoPrint V1.0
 // Bij P.M. de Heij   11-7-2020
-// status: ontwikkeling
+// status: werkend
 
 
 // Libraries Pas op Softservo is aangepst!
@@ -67,8 +67,8 @@ long EEPROMReadLong(long adres)
         1 = Links voorkeur opstarten
         2 = Rechts voorkeur opstarten
 
-   8    DKMode
-        1 = Drukknoppen links en rechts *
+   8    Werking
+        1 = Drukknoppen links en rechts 
         2 = Schakelaar op drukknop Rechts
 
    9   LedMod
@@ -92,7 +92,7 @@ int EindLinks = EEPROM.read(1);  // eind stand servo links
 int EindRechts = EEPROM.read(2);  // eind stand servo rechts
 unsigned long Snelheid = EEPROMReadLong(3);  // snelheid servo
 int VoorKeur = EEPROM.read(7); // Voorkeur opstart stand
-int DKMode = EEPROM.read(8); // Werking Drukknopen 
+int Werking = EEPROM.read(8); // Werking Drukknopen 
 int LedMod = EEPROM.read(9);  // Werking LED
 unsigned long LedKnip = EEPROMReadLong(10); // Knipper snelheid LED
 
@@ -365,24 +365,24 @@ void Configureer()
 
         case 4: // Drukknop mode
 
-            if (DKMode == 1)
+            if (Werking == 1)
             {
                 DuoKnipper(Cyaan, Groen);
             }
-            else if (DKMode == 2)
+            else if (Werking == 2)
             {
                 DuoKnipper(Cyaan, Rood);
             }
             if (DKLinks.read() == 0)
-                DKMode = 2;
+                Werking = 2;
             delay(5);
             if (DKRechts.read() == 0)
-                DKMode = 1;
+                Werking = 1;
             delay(5);
 
             if (digitalRead(RelConf) == 0)
             {
-                EEPROM.write(8, DKMode);
+                EEPROM.write(8, Werking);
                 ProgrammerStap = 5;
                 delay(1000);
             }
@@ -546,7 +546,7 @@ void setup()
     pinMode(RelConf, OUTPUT);
 
     // Servo in voorkeur stand (OPM 9-8 nog niet goed voor vaste schakelaar)
-    if (VoorKeur == 1 || (digitalRead(BUTTON_RECHTS) == 0 && DKMode == 2))
+    if (VoorKeur == 1 || (digitalRead(BUTTON_RECHTS) == 0 && Werking == 2))
     {
 
         Servo.write(EindLinks);
@@ -556,7 +556,7 @@ void setup()
         StatusLed.show();
         digitalWrite(RelConf, HIGH);
     }
-    else if (VoorKeur == 2 || (digitalRead(BUTTON_RECHTS) == 1 && DKMode == 2))
+    else if (VoorKeur == 2 || (digitalRead(BUTTON_RECHTS) == 1 && Werking == 2))
     {
 
         Servo.write(EindRechts);
@@ -575,7 +575,7 @@ void loop()
     DKLinks.update();         // voor bounce 2
 
     // Drukknop servo naar rechts ingedrukt
-    if ((DKRechts.rose() && PosServo == Links && DKMode == 1) || (DKRechts.read() == 0 && PosServo == Links && DKMode == 2 && Vergrendel == 0))
+    if ((DKRechts.rose() && PosServo == Links && Werking == 1) || (DKRechts.read() == 0 && PosServo == Links && Werking == 2 && Vergrendel == 0))
     {
         Stel = EindLinks; // Begin stand
         NaarRechts = 1;   // servo gaat naar rechts
@@ -583,7 +583,7 @@ void loop()
     }
 
     // Drukknop servo naar links ingedrukt
-    if ((DKLinks.rose() && PosServo == Rechts && DKMode == 1) || (DKRechts.read() == 1 && PosServo == Rechts && DKMode == 2 && Vergrendel == 0))
+    if ((DKLinks.rose() && PosServo == Rechts && Werking == 1) || (DKRechts.read() == 1 && PosServo == Rechts && Werking == 2 && Vergrendel == 0))
     {
         Stel = EindRechts; //Begin stand
         NaarLinks = 1;     //servo gaat naar links
