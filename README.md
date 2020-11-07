@@ -11,3 +11,4 @@ Voor code is gebruikt gemaakt van platformIO.
 
 07-08-2020 V0.102a      Statusled vervangen voor een neopixel, kan de stand van de servo worden weergegeven
 
+7-11-2020 V1.0          Werkend voor nu maar door te weinig ruimte wordt code geheel herzien
